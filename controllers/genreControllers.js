@@ -1,7 +1,11 @@
 const Genre = require("../models/genre");
-const Book = require('../models/book');
-const async = require('async');
+const Book = require("../models/book");
+const async = require("async");
  const mongoose = require('mongoose');
+
+ //including form validators
+ const { body , validationResult } = require('express-validator');
+const genre = require("../models/genre");
 
 
 
@@ -20,10 +24,10 @@ exports.GenreList = (req, res) => {
 
 
 
-//Display the information(details) of a specific author
+//Display the information(details) of a specific Genre
 exports.GenreDetails = (req, res, next) => {
 
-     const id = mongoose.Types.ObjectId(req.params.id)
+     const id = mongoose.Types.ObjectId(req.params.id) ;
 
     async.parallel(
         {
@@ -31,14 +35,14 @@ exports.GenreDetails = (req, res, next) => {
                 Genre.findById(id).exec(callback);
             },
             genre_book(callback) {
-                Book.find({ genre:id }).exec(callback);
+                Book.find({ genre: id }).exec(callback);
             },
         },
-        (err, result) => {
+        (err, results) => {
             if (err) {
                 return next(err);
             }
-            if (result.genre == null) {
+            if (results.genre == null) {
                 //not found
                 const err = new Error("Genre not found");
                 err.status = 404;
@@ -48,8 +52,8 @@ exports.GenreDetails = (req, res, next) => {
             res.render("genre_detail",
                 {
                     title: "GENRE DETAIL",
-                    genre: result.genre,
-                    genre_book: result.genre_book
+                    genre: results.genre,
+                    genre_books: results.genre_book
                 })
         }
     );
@@ -59,13 +63,58 @@ exports.GenreDetails = (req, res, next) => {
 
 //Display Genre create form
 exports.GenreCreateGet = (req, res) => {
-    res.send("Not Implemented: Genre Create Form");
+   
+    res.render('genre_form' , { title:"Genre Form" });
+
 }
 
+
+
 //Handle Genre create form
-exports.GenreCreatePost = (req, res) => {
-    res.send("Not Implementd : Genre created! ");
-}
+exports.GenreCreatePost = [
+    body("name", "Genre name required" ).trim().isLength({min:1}).escape(),
+
+    (req,res,next)=>{
+    
+        const errors = validationResult(req);
+
+        const genre = new Genre({name:req.body.name});
+
+        if(!errors.isEmpty()){
+            res.render("genre_form",{
+                title:"CREATE GENRE",
+                genre,
+                errors:errors.array()
+            })
+        }else{
+
+            Genre.findOne({name:req.body.name}).exec((err,found_genre)=>{
+                
+                if(err){
+                    return next(err);
+                }
+                
+                if(found_genre){
+                    //i.e genre already exists
+                    res.redirect(found_genre.url);
+                }else{
+                    genre.save((err)=>{
+                        if(err){
+                            return next(err)
+                        }
+                        res.redirect(genre.url);
+                    });
+                }
+
+
+            })
+
+        }
+
+    }
+]
+
+
 
 //Display Genre update form
 exports.GenreUpdateGet = (req, res) => {

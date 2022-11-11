@@ -1,5 +1,7 @@
 
 const BookInstance = require("../models/bookInstance");
+const mongoose = require('mongoose');
+
 
 //Display list of all BookInstance
 exports.BookInstanceList = (req,res)=>{
@@ -15,10 +17,36 @@ exports.BookInstanceList = (req,res)=>{
      });
 }
 
+
+
+
 //Display the Details of a BookInstance
-exports.BookInstanceDetails = (req,res)=>{
-    res.send(`Not Implemented: BookInstance detail: ${req.params.id}`);
-}
+ exports.BookInstanceDetails = (req, res, next) => {
+
+    const id = mongoose.Types.ObjectId(req.params.id);
+
+    BookInstance.findById(id)
+    .populate("book")
+    .exec((err, bookinstance) => {
+      if (err) {
+        return next(err);
+      }
+      if (bookinstance == null) {
+        // No results.
+        const err = new Error("Book copy not found");
+        err.status = 404;
+        return next(err);
+      }
+      // Successful, so render.
+      res.render("bookinstance_detail", {
+        title: `Copy: ${bookinstance.book.title}`,
+        bookinstance,
+      });
+    });
+      
+ };
+  
+
 
 //Display BookInstace Create Form 
 exports.BookInstanceCreateGet = (req,res)=>{
