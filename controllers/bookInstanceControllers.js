@@ -1,7 +1,9 @@
 
 const BookInstance = require("../models/bookInstance");
 const mongoose = require('mongoose');
-
+const async = require("async");
+const {body , validationResult} = require('express-validator');
+const Book = require("../models/book");
 
 //Display list of all BookInstance
 exports.BookInstanceList = (req,res)=>{
@@ -49,14 +51,84 @@ exports.BookInstanceList = (req,res)=>{
 
 
 //Display BookInstace Create Form 
-exports.BookInstanceCreateGet = (req,res)=>{
-    res.send("Not Implemented: BookInstance create Form");
+exports.BookInstanceCreateGet = (req,res,next)=>{
+    Book.find({},"title").exec((err,books)=>{
+      if(err){
+        return next(err);
+      }
+      // on success
+      res.render("bookInstance_form",{title:"CREATE BOOKINSTANCE",book_list:books});
+    })
 }
 
 //Handle BookIntance Create Form
-exports.BookInstanceCreatePost = (req,res)=>{
-    res.send("Not Implemented: BookIntace Created!");
-}
+exports.BookInstanceCreatePost = [
+
+  //validate and santize fields
+  body("book","Book must be specified")
+  .trim()
+  .isLength({min:1})
+  .escape(),
+  body("imprint","Imprint must be specified")
+  .trim()
+  .isLength({min:1})
+  .escape(),
+  body("status")
+   .escape(),
+  body("due_book")
+   .optional({checkFalsy:true})
+   .isISO8601()
+   .toDate()
+   ,
+   //Process the request
+   (req ,res,next)=>{
+    //Extracting the error from form
+     const errors = validationResult(req);
+
+     const {book,imprint,status,due_book} = req.body;
+     // Creating a bookInstance
+     const bookinstance = new BookInstance({
+      book:book,
+      imprint:imprint,
+      status:status,
+      due_book:due_book,
+     });
+
+     // checking for validation errors
+      if(!errors.isEmpty()){
+
+        Book.find({},"title").exec((err,books)=>{
+
+          if(err){
+            return next(err);
+          }
+
+          res.render("bookInstance_form",{
+            title:"CREATE BOOKINSTANCE",
+            book_list:books,
+            selected_book:bookinstance.book._id,
+            errors:errors.array(),
+            bookinstance,
+          });
+
+        });
+        return ;
+        
+      }
+
+      //data from the form is valid
+      bookinstance.save((err)=>{
+        if(err){
+          return next(err);
+        }
+
+        res.redirect(bookinstance.url);
+      })
+
+   } 
+ 
+
+]
 
 //Display BookInstace Update Form 
 exports.BookInstanceUpdateGet = (req,res)=>{
@@ -69,13 +141,30 @@ exports.BookInstanceUpdatePost = (req,res)=>{
 }
 
 //Display BookInstace Delete Form 
-exports.BookInstanceDeleteGet = (req,res)=>{
-    res.send("Not Implemented: BookInstance delete Form");
+exports.BookInstanceDeleteGet = (req,res,next)=>{
+  
+  BookInstance.findById(req.params.id).exec((err,bookinstance)=>{
+    if(err){
+      return next(err);
+    }
+    res.render("bookinstance_delete",{
+      title:"DELETE BOOKINTANCE",
+      bookinstance:bookinstance
+    });
+  });
+  
 }
 
 //Handle BookIntance Delete Form
-exports.BookInstanceDeletePost = (req,res)=>{
-    res.send("Not Implemented: BookIntace Deleted!");
+exports.BookInstanceDeletePost = (req,res,next)=>{
+  
+  BookInstance.findByIdAndDelete(req.body.bookinstanceid,(err)=>{
+    if(err){
+      return next(err);
+    }
+    res.redirect("/catalog/bookinstances");
+  });
+
 }
 
 

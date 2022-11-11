@@ -6,6 +6,7 @@ const async = require("async");
  //including form validators
  const { body , validationResult } = require('express-validator');
 const genre = require("../models/genre");
+const author = require("../models/author");
 
 
 
@@ -126,12 +127,75 @@ exports.GenreUpdatePost = (req, res) => {
     res.send("Not Implemented : Genre upadated!");
 };
 
+
+
 //Display Genre delete form
-exports.GenreDeleteGet = (req, res) => {
-    res.send("Not Implemented : Genre delete Form");
+exports.GenreDeleteGet = (req, res ,next) => {
+   
+    async.parallel(
+        {
+            genre(callback){
+                Genre.findById(req.params.id).exec(callback);
+            },
+            genre_books(callback){
+                Book.find({genre:req.params.id}).exec(callback);
+            },
+        },
+        (err,results)=>{
+           if(err){
+             return next(err);
+           }
+           if(results.genre===null){
+            res.redirect('/catalog/genres');
+           }
+
+           //Sucess
+           res.render("genre_delete",{
+            title:"DELETE GENRE",
+            genre:results.genre,
+            genre_books:results.genre_books
+           });
+        }
+    )
+
 }
 
 //Handle Genre delete form
-exports.GenreDeletePost = (req, res) => {
-    res.send("Not Implemented: Genre delelted! ");
+exports.GenreDeletePost = (req, res ,next) => {
+    
+    async.parallel(
+        {
+            genre(callback){
+               Genre.findById(req.body.genreid).exec(callback);
+            },
+            genre_books(callback){
+              Book.find({genre:req.body.genreid}).exec(callback);  
+            },
+        },
+        (err,results)=>{
+            
+            if(err){
+                return next(err);
+            }
+            // if genre has books renger the same page
+            if(results.genre_books.length > 0 ){
+                res.render("genre_delete",{
+                    title:"DELETE GENRE",
+                    genre:results.genre,
+                    genre_books:results.genre
+                });
+            }
+            //if genre has no book , delete the genre
+            Genre.findByIdAndDelete(req.body.genreid,(err)=>{
+                if(err){
+                    return next(err);
+                }
+                res.redirect("/catalog/genres");
+            })
+
+        }
+
+
+    )
+
 }

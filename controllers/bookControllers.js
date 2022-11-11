@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 
 const async = require('async');
 const { body, validationResult } = require("express-validator");
+const book = require("../models/book");
 
 
 
@@ -241,10 +242,67 @@ exports.BookUpdatePost = (req,res)=>{
 
 //Display book delete form
 exports.BookDeleteGet = (req,res)=>{
-    res.send("Not Implemented : Book delete Form");
+  
+  async.parallel(
+    {
+      book(callback){
+        Book.findById(req.params.id).exec(callback);
+      },
+      book_bookinstance(callback){
+        BookInstance.find({book:req.params.id}).exec(callback);
+      },
+    },
+    (err,results)=>{
+      if(err){
+        return next(err);
+
+      }
+
+      res.render("book_delete",{
+        title:"DELETE BOOK",
+        book:results.book,
+        bookinstances:results.book_bookinstance,
+      });
+
+    }
+  );
+  
+
 }
 
 //Handle book delte form
-exports.BookDeletePost = (req , res) =>{
-    res.send("Not Implemented: Book delelted! ");
+exports.BookDeletePost = (req , res ,next) =>{
+  
+  async.parallel(
+    {
+      book(callback){
+        Book.findById(req.body.bookid).exec(callback);
+      },
+      book_bookinstances(callback){
+        BookInstance.find({ book:req.body.bookid}).exec(callback);
+      }
+    },
+    (err,results)=>{
+      if(err){
+        return next(err);
+      }
+      // if book has an bookinstance
+      if(results.book_bookinstances.length > 0 ){
+        res.render("book_delete",{
+          title:"DELETE BOOK",
+          book:results.book,
+          bookinstances:results.book_bookinstances,
+        });
+      }
+      // if book has no bookIntance, delete the book
+      Book.findByIdAndDelete(req.body.bookid,(err)=>{
+        if(err){
+          return next(err);
+        }
+        res.redirect('/catalog/books');
+      })
+
+    }
+  )
+
 }

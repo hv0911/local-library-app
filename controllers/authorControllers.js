@@ -143,12 +143,75 @@ exports.authorUpdatePost = (req, res) => {
     res.send("Not Implemented : Author upadated!");
 };
 
+
+
 //Display authors delete form
-exports.authorDeleteGet = (req, res) => {
-    res.send("Not Implemented : Author delete Form");
+exports.authorDeleteGet = (req, res ,next) => {
+   
+    async.parallel(
+        {
+            author(callback){
+                Author.findById(req.params.id).exec(callback);
+            },
+            author_books(callback){
+                Book.find({author:req.params.id}).exec(callback);
+            }
+        },
+        (err,results)=>{
+            if(err){
+                return next(err);
+            }
+
+            if(results.author===null){
+                res.redirect('/catalog/authors')
+            }
+
+            //Author exists
+            res.render("author_delete",{
+                title:"DELETE AUTHOR",
+                author:results.author,
+                author_books:results.author_books,
+            });
+        }
+    )
+    
 }
 
 //Handle auhtors delte form
-exports.authorDeletePost = (req, res) => {
-    res.send("Not Implemented: Author delelted! ");
+exports.authorDeletePost = (req, res,next) => {
+   
+    async.parallel(
+        {
+            author(callback){
+                Author.findById(req.body.authorid).exec(callback);
+            },
+            author_books(callback){
+                Book.find({ author:req.body.authorid }).exec(callback);
+            },
+        },
+        (err,results)=>{
+            if(err){
+                return next(err);
+            }
+            // Success if author has books render the same page
+            if(results.author_books.length > 0){
+                res.render("author_delete",{
+                    title:"DELETE AUTHOR",
+                    author:results.author,
+                    author_books:results.author_books,
+                });
+            }
+
+            //if author has no books, delete author
+            Author.findByIdAndDelete(req.body.authorid,(err)=>{
+                if(err){
+                    return next(err);
+                }
+                res.redirect('/catalog/authors');
+            });
+
+
+        }
+    )
+
 }

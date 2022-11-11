@@ -87,7 +87,7 @@ router.post('/genre/:id/update',genreControllers.GenreUpdatePost);
 router.get('/genre/:id/delete',genreControllers.GenreDeleteGet);
 
 //post request for creating new genre
-router.post('/genre/:id/update',genreControllers.GenreDeletePost);
+router.post('/genre/:id/delete',genreControllers.GenreDeletePost);
 
 //get request for one genre
 router.get('/genre/:id',genreControllers.GenreDetails);
