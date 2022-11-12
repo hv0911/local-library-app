@@ -118,14 +118,60 @@ exports.GenreCreatePost = [
 
 
 //Display Genre update form
-exports.GenreUpdateGet = (req, res) => {
-    res.send("Not Implemented : Genre update form");
+exports.GenreUpdateGet = (req, res ,next) => {
+  Genre.findById(req.params.id,(err,genre)=>{
+    if(err){
+        return next(err);
+    }
+    if(genre===null){   
+        const err = new Error("Genre not found");
+        err.status = 404
+        return next(err);
+    }
+
+    res.render("genre_form" ,{
+        title:"UPDATE GENRE",
+        genre:genre
+    })
+  })
 };
 
 //Handle Genre update form
-exports.GenreUpdatePost = (req, res) => {
-    res.send("Not Implemented : Genre upadated!");
-};
+exports.GenreUpdatePost = [
+
+    // validation
+    body("name","Genre name must be of 3 characters").trim().isLength({min:3}).escape()
+    ,
+    (req,res,next)=>{
+
+        const errors = validationResult(req);
+
+        const genre = new Genre({
+            name:req.body.name,
+            _id:req.params.id,
+        });
+
+        if(!errors.isEmpty()){
+            res.render("genre_form"<{
+                title:"UPDATE GENRE",
+                genre:genre,
+                errors:errors.array()
+            });
+            return;
+        }else{
+         
+            Genre.findByIdAndUpdate(req.params.id,genre , (err,thegenre)=>{
+                if(err){
+                    return next(err);
+                }
+                // so success
+                res.redirect(thegenre.url);
+            })
+
+        }
+
+    }
+]
 
 
 

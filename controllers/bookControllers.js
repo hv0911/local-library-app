@@ -6,8 +6,6 @@ const mongoose = require("mongoose");
 
 const async = require('async');
 const { body, validationResult } = require("express-validator");
-const book = require("../models/book");
-
 
 
 //Display the home page of the site
@@ -229,16 +227,162 @@ exports.BookCreatePost = [
 
 
 //Display book update form
-exports.BookUpdateGet = (req,res)=>{
-    res.send("Not Implemented : Book Update form");
+exports.BookUpdateGet = (req,res,next)=>{
+  
+  async.parallel(
+    {
+      book(callback){
+        Book.findById(req.params.id)
+            .populate("author")
+            .populate("genre")
+            .exec(callback);
+      },
+      authors(callback){
+          Author.find(callback);
+      },
+    genres(callback){
+         Genre.find(callback);
+    },
+
+    },
+
+    (err,results)=>{
+      if(err){
+        return next(err);
+
+      }
+
+      // if there is no such book
+      if(results.book===null){
+        const err = new Error("Book not found");
+        err.status = 404;
+        return next(err);
+      }
+
+      //Sucess
+      for(const genre of results.genres){
+        for(const gerneBook of results.book.genre){
+          if(genre._id.toString() === gerneBook._id.toString()){
+            genre.checked = "true" ;
+          }
+        }
+      }
+
+      res.render("book_form",{
+        title:"UPDATE BOOK",
+        book:results.book,
+        authors:results.authors,
+        genres:results.genres
+      });
+
+    }
+  )
+
 };
+
 
 
 
 //Handle book update form
-exports.BookUpdatePost = (req,res)=>{
-    res.send("Not Implemented : Book upadated!");
-};
+exports.BookUpdatePost = [
+
+  (req,res,next)=>{
+    if(!Array.isArray(req.body.genre)){
+      req.body.genre = typeof req.body.genre==="undefined" ? [] : [req.body.genre] ;
+    }
+    next();
+  },
+
+  // Validate and santize the field
+  body("title","Title must not be empty")
+   .trim()
+   .isLength({min:1})
+   .escape(),
+  body("author","Author must not be empty")
+   .trim()
+   .isLength({min:1})
+   .escape(),
+  body("summary","Summary must not be empty")
+   .trim()
+   .isLength({min:1})
+   .escape(),
+  body("isbn","ISBN must not be empty")
+   .trim()
+   .isLength({min:1})
+   .escape(),
+  body("genre.*").escape(),
+  
+  // Process request after validation and santization
+  (req,res,next)=>{
+
+    const errors = validationResult(req);
+
+    const {title ,author ,summary , genre, isbn} = req.body;
+    //Creating book object with escaped trim data
+     const book = new Book({
+      title:title,
+      author:author,
+      summary:summary,
+      genre:typeof genre === "undefined" ? [] : [genre] ,
+      isbn:isbn,
+      _id:req.params.id,  //This is required or new id will assign
+    
+     });
+
+     if(!errors.isEmpty()){
+
+      //Get all the author
+      async.parallel(
+        {
+          authors(callback){
+            Author.find(callback);
+          },
+          genres(callback){
+            Genre.find(callback);
+          }
+        },
+        (err,results)=>{
+          if(err){
+            return next(err);
+          }
+          //Mark our selected genre as checked
+          for(const genre of results.genres){
+               if(book.genre.includes(genre._id)){
+                genre.checked="true" ;
+               }
+          }
+
+          res.render('book_form',{
+            title:"UPDATE BOOK",
+            authors:results.authors,
+            genres:results.genres,
+            book,
+            errors:errors.array(),
+          });
+        }
+      )
+      return ;
+     }
+
+     //Data from form is valid , update the form
+     Book.findByIdAndUpdate(req.params.id, book , {} ,(err,thebook)=>{
+
+      if(err){
+        return next(err);
+      }
+
+      // Successful
+      res.redirect(thebook.url);
+     });
+
+
+  }
+
+
+]
+
+
+
 
 //Display book delete form
 exports.BookDeleteGet = (req,res)=>{

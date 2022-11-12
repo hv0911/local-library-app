@@ -134,14 +134,94 @@ exports.authorCreatePost =  [
 
 
 //Display authors update form
-exports.authorUpdateGet = (req, res) => {
-    res.send("Not Implemented : Author Update form");
+exports.authorUpdateGet = (req, res ,next) => {
+   
+    Author.findById(req.params.id,(err,author)=>{
+        if(err){
+            return next(err);
+        }
+        if(author===null){
+          const err = new Error("Author not found");
+          err.status = 404;
+          return next(err);
+        }
+
+        // On success
+        res.render("author_form",{
+            title:"UPDATE Author",
+            author:author
+        });
+    });
+
 };
 
 //Handle author update form
-exports.authorUpdatePost = (req, res) => {
-    res.send("Not Implemented : Author upadated!");
-};
+exports.authorUpdatePost = [
+
+    body("firstName")
+     .trim()
+     .isLength({min:1})
+     .escape()
+     .withMessage("firstName must be specified")
+     .isAlphanumeric()
+     .withMessage("firstName must be alphanumeric")
+    ,
+    body("familyName")
+     .trim()
+     .isLength({min:1})
+     .escape()
+     .withMessage("familyName must be specified")
+     .isAlphanumeric()
+     .withMessage("familyName must be alphanumeric")
+    ,
+    body("dateOfBirth","Invalid date of birth")
+     .optional({checkFalsy:true})
+     .isISO8601()
+     .toDate()
+    ,
+    body("dateOfDeath","Invalid date of Death")
+     .optional({checkFalsy:true})
+     .isISO8601()
+     .toDate()
+    ,
+
+    //Process request after validation and sanatization
+    (req,res,next)=>{
+
+        const errors = validationResult(req);
+
+        const {firstName,familyName,dateOfBirth,dateOfDeath} = req.body;
+
+        const author = new Author({
+            firstName:firstName,
+            familyName:familyName,
+            dateOfBirth:dateOfBirth,
+            dateOfDeath:dateOfDeath,
+            _id:req.params.id  //required so that new id is not created
+
+        })
+
+        if(!errors.isEmpty()){
+            // if validation fail 
+           res.render("author_form",{
+            title:"UPDATE AUTHOR",
+            author:author,
+            errors:errors.array()
+           });
+           return ;
+        }
+
+        //On Success
+        Author.findByIdAndUpdate(req.params.id, author ,(err,theauthor)=>{
+            if(err){
+                return next(err);
+            }
+            res.redirect(theauthor.url);
+        } )
+
+    }
+
+]
 
 
 
