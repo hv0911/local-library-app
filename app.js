@@ -16,7 +16,10 @@ app.use(helmet());
 
 // making connection to database
 const mongoose = require('mongoose');
-const mongodb = 'mongodb+srv://Harsh:Harsh.11@cluster0.thhjcfm.mongodb.net/?retryWrites=true&w=majority';
+
+const dev_db_url =  'mongodb+srv://Harsh:Harsh.11@cluster0.thhjcfm.mongodb.net/?retryWrites=true&w=majority';
+const mongodb = process.env.MONGOD_URI || dev_db_url ;
+
 mongoose.connect(mongodb,{useNewUrlParser: true, useUnifiedTopology: true} );
 const db = mongoose.connection;
 db.on("error",console.error.bind(console,"MongoDB connection error: "));
